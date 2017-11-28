@@ -1,0 +1,8 @@
+**/.idea
+**/*.iml
+**/target
+fabric-client/.idea
+fabric-client/*.iml
+/fabric-client/.idea/
+/fabric-client/target/
+/fabric-client/fabric-client.iml
