@@ -80,7 +80,7 @@ public class FabricClient {
 //                    .setPath("/Users/albertlacambra1/git/samaworkshop/fabric-client/")
                     .build();
 
-            installChaincode(hfClient, chaincodeID, "/Users/albertlacambra1/git/samaworkshop/fabric-client/", peers);
+            installChaincode(hfClient, chaincodeID, "C:/Users/alacambra.SAMA/git/workshop/fabric-client", peers);
             BlockInfo blockInfo = instantiateChaincode(hfClient, channel, chaincodeID);
             System.out.println("Instantion on block " + Optional.ofNullable(blockInfo).map(BlockInfo::getBlockNumber).orElse(-1L));
 
@@ -169,9 +169,9 @@ public class FabricClient {
             public PrivateKey getKey() {
                 //"crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
                 String pKey = "-----BEGIN PRIVATE KEY-----\n" +
-                        "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgBdjKqyzRJDfV/3L7\n" +
-                        "u9Qhfo/ONYEexi3ehggoYWSR7rqhRANCAAS0Moo/o5+uWcSJqoVGKGKWAeKQYRMz\n" +
-                        "4tyGDHzpPuKPpG3oWdDse8PB4X48ns8Ld8Wi8IrJJEvTAJVq3bvzQPxf\n" +
+                        "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgOTAyvyKCd6kPZrPh\n" +
+                        "mT4jTmeU7724zr33DAM+jWGOQKWhRANCAATGrUKaP23FUXq/eiVuYTLtl8fysWaW\n" +
+                        "2YjSbPiEdpiVgkPz+1XUGmdaJ5k642V64m1cxe5rZeNN0wlnGJFmz+bD\n" +
                         "-----END PRIVATE KEY-----";
                 return fromPemToPrivateKey(pKey);
             }
@@ -181,18 +181,18 @@ public class FabricClient {
 
                 //crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/Admin@org1.example.com-cert.pem
                 return "-----BEGIN CERTIFICATE-----\n" +
-                        "MIICGTCCAb+gAwIBAgIQEUs4pEsoXq/FinVOqEkPQzAKBggqhkjOPQQDAjBzMQsw\n" +
+                        "MIICGDCCAb+gAwIBAgIQVyaxhVNk8NzLsPqL6p4P0DAKBggqhkjOPQQDAjBzMQsw\n" +
                         "CQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy\n" +
                         "YW5jaXNjbzEZMBcGA1UEChMQb3JnMS5leGFtcGxlLmNvbTEcMBoGA1UEAxMTY2Eu\n" +
-                        "b3JnMS5leGFtcGxlLmNvbTAeFw0xNzA5MDcyMDAzMjJaFw0yNzA5MDUyMDAzMjJa\n" +
+                        "b3JnMS5leGFtcGxlLmNvbTAeFw0xNzExMjkyMTIwMTJaFw0yNzExMjcyMTIwMTJa\n" +
                         "MFsxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1T\n" +
                         "YW4gRnJhbmNpc2NvMR8wHQYDVQQDDBZBZG1pbkBvcmcxLmV4YW1wbGUuY29tMFkw\n" +
-                        "EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEtDKKP6OfrlnEiaqFRihilgHikGETM+Lc\n" +
-                        "hgx86T7ij6Rt6FnQ7HvDweF+PJ7PC3fFovCKySRL0wCVat2780D8X6NNMEswDgYD\n" +
-                        "VR0PAQH/BAQDAgeAMAwGA1UdEwEB/wQCMAAwKwYDVR0jBCQwIoAgubagHiRoR1VS\n" +
-                        "k7NCOwAqgo0K8BOvUOAQusBdhFKh8JMwCgYIKoZIzj0EAwIDSAAwRQIhAIGrQvMY\n" +
-                        "piqiX8mVbZ5QuO6bKg6WHXCjDTjcGYsG6UTZAiAToRH3oadJ6nrDmBS/+sEBEuVu\n" +
-                        "GKnLz1IqGLLePl1u3w==\n" +
+                        "EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEK0wg3D7kkLn/k4Ly895hGSrjcEedm36N\n" +
+                        "3XmXBzqA25yo4XvA0HQJR+6rplSScZS95rSigiaKRcTqUH9lWOe4IaNNMEswDgYD\n" +
+                        "VR0PAQH/BAQDAgeAMAwGA1UdEwEB/wQCMAAwKwYDVR0jBCQwIoAgBT19srNLwFNM\n" +
+                        "q9QfzOSe/OfzF0grHetaAtZZ9+iA8WgwCgYIKoZIzj0EAwIDRwAwRAIgC4rXxhba\n" +
+                        "QRT+3u7XCGCnqBXBc3mWaJRcapKyaNtiITMCIF+c9+CJesUBmenM9oyzy42XW0nZ\n" +
+                        "sxCPk/ZP44EH10Tc\n" +
                         "-----END CERTIFICATE-----";
             }
 
@@ -284,7 +284,7 @@ public class FabricClient {
 
     private Channel createChannel(HFClient client, Orderer orderer, Peer peer) {
         String channelName = "mychannel";
-        String path = "/Users/albertlacambra1/git/blockchain-unchained/fabric-scripts/channel-artifacts/channel.tx";
+        String path = "C:/Users/alacambra.SAMA/git/go/work/src/github.com/hyperledger/fabric/examples/e2e_cli/channel-artifacts/channel.tx";
         Channel channel;
 
         try {
