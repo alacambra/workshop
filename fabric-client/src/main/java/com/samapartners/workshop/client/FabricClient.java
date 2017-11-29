@@ -11,10 +11,10 @@ import org.hyperledger.fabric.sdk.exception.ProposalException;
 import org.hyperledger.fabric.sdk.exception.TransactionException;
 import org.hyperledger.fabric.sdk.security.CryptoSuite;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.UnsupportedEncodingException;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import java.io.*;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -22,16 +22,25 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
+import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Created by alacambra on 28.11.17.
  */
-public class Demo {
+public class FabricClient {
+
+    HFClient hfClient;
+    Channel channel;
+    List<Peer> peers;
+    List<Orderer> orderers;
+    List<EventHub> eventHubs;
+
 
     public static void main(String[] args) {
-        new Demo().runAll();
+        new FabricClient().runAll();
     }
 
     public void runAll() {
@@ -48,9 +57,9 @@ public class Demo {
             SampleUser peerOfOrganization1Admin = enroll("Admin", organizationName, organizationMspId);
 
             hfClient.setUserContext(peerOfOrganization1Admin);
-            List<Peer> peers = initPeers(hfClient);
-            List<Orderer> orderers = initOrderers(hfClient);
-            List<EventHub> eventHubs = initEventHubs(hfClient);
+            peers = initPeers(hfClient);
+            orderers = initOrderers(hfClient);
+            eventHubs = initEventHubs(hfClient);
 
 
             Channel channel;
@@ -88,6 +97,70 @@ public class Demo {
         Enrollment enrollment = getEnrollment();
         sampleUser.setEnrollment(enrollment);
         return sampleUser;
+    }
+
+    public <T> Optional<T> query(ChaincodeID chaincodeID, String function, String[] args, Function<JsonObject, T> transformer) {
+        QueryByChaincodeRequest queryByChaincodeRequest = hfClient.newQueryProposalRequest();
+        queryByChaincodeRequest.setArgs(args);
+        queryByChaincodeRequest.setFcn(function);
+        queryByChaincodeRequest.setChaincodeID(chaincodeID);
+        try {
+            List<ProposalResponse> proposalResponses = new ArrayList<>(channel.queryByChaincode(queryByChaincodeRequest));
+
+            ProposalResponse proposalResponse = proposalResponses.get(0);
+            if (proposalResponse.getStatus() != ChaincodeResponse.Status.SUCCESS) {
+                return Optional.empty();
+            }
+
+            byte[] bytes = proposalResponses.get(0).getProposalResponse().getResponse().getPayload().toByteArray();
+            JsonReader jsonReader = Json.createReader(new ByteArrayInputStream(bytes));
+            JsonObject jsonObject = jsonReader.readObject();
+            T result = transformer.apply(jsonObject);
+            return Optional.ofNullable(result);
+
+
+        } catch (InvalidArgumentException | ProposalException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    private CompletableFuture<BlockInfo> invoke(ChaincodeID chaincodeID, String functionName, String[] args) {
+
+        TransactionProposalRequest transactionProposalRequest = hfClient.newTransactionProposalRequest();
+        transactionProposalRequest.setChaincodeID(chaincodeID);
+        transactionProposalRequest.setFcn(functionName);
+        transactionProposalRequest.setArgs(args);
+
+        Map<String, byte[]> transientProposalData = new HashMap<>();
+        transientProposalData.put("HyperLedgerFabric", "TransactionProposalRequest:JavaSDK".getBytes(UTF_8));
+        transientProposalData.put("method", "TransactionProposalRequest".getBytes(UTF_8));
+        transientProposalData.put("result", ":)".getBytes(UTF_8));
+
+        try {
+            transactionProposalRequest.setTransientMap(transientProposalData);
+            List<ProposalResponse> transactionPropResp = new ArrayList<>(
+                    channel.sendTransactionProposal(transactionProposalRequest, channel.getPeers())
+            );
+
+            ProposalResponse proposalResponse = transactionPropResp.get(0);
+
+            if (proposalResponse.getStatus() != ChaincodeResponse.Status.SUCCESS) {
+                return null;
+            }
+
+            Collection<Set<ProposalResponse>> invokeTRProposalConsistencySets = SDKUtils.getProposalConsistencySets(transactionPropResp);
+
+            if (invokeTRProposalConsistencySets.size() != 1) {
+                throw new RuntimeException(format("Expected only one set of consistent proposal responses but got %d", invokeTRProposalConsistencySets.size()));
+            }
+            return sendTransactionToOrderer(channel, proposalResponse, orderers);
+
+        } catch (InvalidArgumentException ex) {
+            throw new IllegalArgumentException(ex);
+        } catch (ProposalException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Enrollment getEnrollment() {
@@ -296,7 +369,7 @@ public class Demo {
 
             if (proposalResponse.isVerified() && proposalResponse.getStatus() == ProposalResponse.Status.SUCCESS) {
                 try {
-                    return sendTransactionToOrdererAndConfirm(channel, proposalResponse, channel.getOrderers()).get();
+                    return sendTransactionToOrderer(channel, proposalResponse, channel.getOrderers()).get();
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
                 }
@@ -310,9 +383,9 @@ public class Demo {
         return null;
     }
 
-    private CompletableFuture<BlockInfo> sendTransactionToOrdererAndConfirm(Channel channel, ProposalResponse proposalsResult, Collection<Orderer> orderer) {
+    private CompletableFuture<BlockInfo> sendTransactionToOrderer(Channel channel, ProposalResponse proposalsResult, Collection<Orderer> orderer) {
 
-        return channel.sendTransaction(Collections.singletonList(proposalsResult), orderer)
+        return channel.sendTransaction(Collections.singletonList(proposalsResult), orderers)
                 .thenApply(transactionEvent -> {
                     String transactionId = transactionEvent.getTransactionID();
                     try {
