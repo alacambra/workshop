@@ -1,0 +1,67 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+}
+
+plugins {
+    id "java"
+    id "application"
+}
+
+archivesBaseName = "chaincode"
+mainClassName="com.samapartners.workshop.chaincode.DemoChaincode"
+
+task printClasspath {
+    doLast {
+        configurations.testRuntime.each { println it }
+    }
+}
+
+run {
+    if (project.hasProperty("appArgs")) {
+        args = Eval.me(appArgs)
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src'
+        }
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+
+jar.doFirst {
+    destinationDir=file("${buildDir}")
+    manifest {
+        attributes (
+                'Main-Class': mainClassName,
+                'Class-Path': configurations.runtime.collect { "libs/"+"$it.name" }.join(' ')
+        )
+    }
+}
+
+task copyToLib(type: Copy) {
+    into "$buildDir/libs"
+    from configurations.runtime
+}
+
+build.finalizedBy(copyToLib)
+
+dependencies {
+    compile 'org.hyperledger:shim-client:1.0'
+    compile group: 'org.glassfish.jersey.media', name: 'jersey-media-json-processing', version: '2.22.2'
+    compile group: 'io.grpc', name: 'grpc-all', version: '0.13.2'
+    compile group: 'com.google.guava', name: 'guava', version: '19.0'
+    compile group: 'com.google.code.gson', name: 'gson', version: '2.8.1'
+    compile group: 'com.google.protobuf', name: 'protobuf-java', version: '3.0.0-beta-1'
+}
