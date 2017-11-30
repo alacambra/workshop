@@ -14,6 +14,7 @@ import org.hyperledger.fabric.sdk.security.CryptoSuite;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
+import javax.json.JsonValue;
 import java.io.*;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
@@ -31,6 +32,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * Created by alacambra on 28.11.17.
  */
 public class FabricClient {
+
+    private static final String HOST = "10.75.40.65";
 
     HFClient hfClient;
     Channel channel;
@@ -52,7 +55,7 @@ public class FabricClient {
 
 
             //HFCLient config
-            HFClient hfClient = HFClient.createNewInstance();
+            hfClient = HFClient.createNewInstance();
             hfClient.setCryptoSuite(CryptoSuite.Factory.getCryptoSuite());
             SampleUser peerOfOrganization1Admin = enroll("Admin", organizationName, organizationMspId);
 
@@ -61,8 +64,6 @@ public class FabricClient {
             orderers = initOrderers(hfClient);
             eventHubs = initEventHubs(hfClient);
 
-
-            Channel channel;
 //            channel = createChannel(hfClient, orderers.get(0), peers.get(0));
             try {
                 channel = initChannel(hfClient);
@@ -76,15 +77,16 @@ public class FabricClient {
 
             ChaincodeID chaincodeID = ChaincodeID.newBuilder()
                     .setName("demo")
-                    .setVersion("1")
-//                    .setPath("/Users/albertlacambra1/git/samaworkshop/fabric-client/")
+                    .setVersion("11")
                     .build();
 
-            installChaincode(hfClient, chaincodeID, "C:/Users/alacambra.SAMA/git/workshop/fabric-client", peers);
+            installChaincode(hfClient, chaincodeID, "C:/Users/alacambra.SAMA/git/workshop/fabric-client/deployment", peers);
             BlockInfo blockInfo = instantiateChaincode(hfClient, channel, chaincodeID);
-            System.out.println("Instantion on block " + Optional.ofNullable(blockInfo).map(BlockInfo::getBlockNumber).orElse(-1L));
+            System.out.println("Instantiation on block " + Optional.ofNullable(blockInfo).map(BlockInfo::getBlockNumber).orElse(-1L));
 
-            runTestQuery(channel, hfClient);
+            invoke(chaincodeID, "put", new String[]{"test"});
+            String result = query(chaincodeID, "get", new String[]{"none"}, JsonValue::toString).orElse("none");
+            System.out.println("result=" + result);
 
         } catch (CryptoException | InvalidArgumentException e) {
             throw new RuntimeException(e);
@@ -113,6 +115,7 @@ public class FabricClient {
             }
 
             byte[] bytes = proposalResponses.get(0).getProposalResponse().getResponse().getPayload().toByteArray();
+            System.out.println("Received  " + new String(bytes));
             JsonReader jsonReader = Json.createReader(new ByteArrayInputStream(bytes));
             JsonObject jsonObject = jsonReader.readObject();
             T result = transformer.apply(jsonObject);
@@ -146,6 +149,7 @@ public class FabricClient {
             ProposalResponse proposalResponse = transactionPropResp.get(0);
 
             if (proposalResponse.getStatus() != ChaincodeResponse.Status.SUCCESS) {
+                System.out.println("Error: " + proposalResponse.getMessage());
                 return null;
             }
 
@@ -169,9 +173,9 @@ public class FabricClient {
             public PrivateKey getKey() {
                 //"crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
                 String pKey = "-----BEGIN PRIVATE KEY-----\n" +
-                        "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgOTAyvyKCd6kPZrPh\n" +
-                        "mT4jTmeU7724zr33DAM+jWGOQKWhRANCAATGrUKaP23FUXq/eiVuYTLtl8fysWaW\n" +
-                        "2YjSbPiEdpiVgkPz+1XUGmdaJ5k642V64m1cxe5rZeNN0wlnGJFmz+bD\n" +
+                        "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgvd1k1R2/xqnwIP3E\n" +
+                        "G2vPSvR0p9jNDBsyGQo1crYEgDKhRANCAASWHAJtzDyAIl/rzIUHs57qWpvis0ht\n" +
+                        "RUPcetHHOLnG8aVRRcNH624BXNQSIfGdGrs3LjsW+B3O7GK/0KJ/DBUN\n" +
                         "-----END PRIVATE KEY-----";
                 return fromPemToPrivateKey(pKey);
             }
@@ -181,18 +185,18 @@ public class FabricClient {
 
                 //crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/Admin@org1.example.com-cert.pem
                 return "-----BEGIN CERTIFICATE-----\n" +
-                        "MIICGDCCAb+gAwIBAgIQVyaxhVNk8NzLsPqL6p4P0DAKBggqhkjOPQQDAjBzMQsw\n" +
-                        "CQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy\n" +
-                        "YW5jaXNjbzEZMBcGA1UEChMQb3JnMS5leGFtcGxlLmNvbTEcMBoGA1UEAxMTY2Eu\n" +
-                        "b3JnMS5leGFtcGxlLmNvbTAeFw0xNzExMjkyMTIwMTJaFw0yNzExMjcyMTIwMTJa\n" +
-                        "MFsxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1T\n" +
-                        "YW4gRnJhbmNpc2NvMR8wHQYDVQQDDBZBZG1pbkBvcmcxLmV4YW1wbGUuY29tMFkw\n" +
-                        "EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEK0wg3D7kkLn/k4Ly895hGSrjcEedm36N\n" +
-                        "3XmXBzqA25yo4XvA0HQJR+6rplSScZS95rSigiaKRcTqUH9lWOe4IaNNMEswDgYD\n" +
-                        "VR0PAQH/BAQDAgeAMAwGA1UdEwEB/wQCMAAwKwYDVR0jBCQwIoAgBT19srNLwFNM\n" +
-                        "q9QfzOSe/OfzF0grHetaAtZZ9+iA8WgwCgYIKoZIzj0EAwIDRwAwRAIgC4rXxhba\n" +
-                        "QRT+3u7XCGCnqBXBc3mWaJRcapKyaNtiITMCIF+c9+CJesUBmenM9oyzy42XW0nZ\n" +
-                        "sxCPk/ZP44EH10Tc\n" +
+                        "MIICGTCCAcCgAwIBAgIRAIuOQz6wbj5ImyKmf2lH7GUwCgYIKoZIzj0EAwIwczEL\n" +
+                        "MAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBG\n" +
+                        "cmFuY2lzY28xGTAXBgNVBAoTEG9yZzEuZXhhbXBsZS5jb20xHDAaBgNVBAMTE2Nh\n" +
+                        "Lm9yZzEuZXhhbXBsZS5jb20wHhcNMTcxMTMwMDc1NjQ2WhcNMjcxMTI4MDc1NjQ2\n" +
+                        "WjBbMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMN\n" +
+                        "U2FuIEZyYW5jaXNjbzEfMB0GA1UEAwwWQWRtaW5Ab3JnMS5leGFtcGxlLmNvbTBZ\n" +
+                        "MBMGByqGSM49AgEGCCqGSM49AwEHA0IABJYcAm3MPIAiX+vMhQeznupam+KzSG1F\n" +
+                        "Q9x60cc4ucbxpVFFw0frbgFc1BIh8Z0auzcuOxb4Hc7sYr/Qon8MFQ2jTTBLMA4G\n" +
+                        "A1UdDwEB/wQEAwIHgDAMBgNVHRMBAf8EAjAAMCsGA1UdIwQkMCKAIGcW49PV2p1V\n" +
+                        "XUKL4R3WtNCyNrUpz9h/0dvvoLPuo4cWMAoGCCqGSM49BAMCA0cAMEQCIFf8+0YL\n" +
+                        "gM6ePeOn47Mqw+wUTHFxWgY3Z5eWc28lOkGsAiAUa/8i6jXzZDmwF3SO2BAhtFcL\n" +
+                        "/gTSinnkgj2IyZ8vnA==\n" +
                         "-----END CERTIFICATE-----";
             }
 
@@ -210,10 +214,10 @@ public class FabricClient {
         };
     }
 
-    public List<Peer> initPeers(HFClient client) {
+    public List<Peer> initPeers(HFClient hfClient) {
 
         Properties properties = new Properties();
-        String peerUrl = "grpc://192.168.99.100:7051";
+        String peerUrl = "grpc://" + HOST + ":7051";
         String peerName = "peer0.org1.example.com";
 
         List<Peer> peers = new ArrayList<>();
@@ -222,7 +226,7 @@ public class FabricClient {
 //        properties.put("grpc.NettyChannelBuilderOption.maxInboundMessageSize", 9000000);
 
         try {
-            peers.add(client.newPeer(peerName, peerUrl, properties));
+            peers.add(hfClient.newPeer(peerName, peerUrl, properties));
         } catch (InvalidArgumentException ex) {
             throw new IllegalArgumentException(ex);
         }
@@ -230,9 +234,9 @@ public class FabricClient {
     }
 
 
-    public List<Orderer> initOrderers(HFClient client) {
+    public List<Orderer> initOrderers(HFClient hfClient) {
 
-        String ordererUrl = "grpc://192.168.99.100:7050";
+        String ordererUrl = "grpc://" + HOST + ":7050";
 
         List<Orderer> orderers = new ArrayList<>();
         Properties ordererProperties = new Properties();
@@ -242,7 +246,7 @@ public class FabricClient {
         ordererProperties.put("grpc.NettyChannelBuilderOption.keepAliveTimeout", new Object[]{8L, TimeUnit.SECONDS});
 
         try {
-            orderers.add(client.newOrderer("orderer.example.com", ordererUrl, ordererProperties));
+            orderers.add(hfClient.newOrderer("orderer.example.com", ordererUrl, ordererProperties));
         } catch (InvalidArgumentException ex) {
             throw new IllegalArgumentException(ex);
         }
@@ -250,17 +254,17 @@ public class FabricClient {
         return orderers;
     }
 
-    public static List<EventHub> initEventHubs(HFClient client) {
+    public static List<EventHub> initEventHubs(HFClient hfClient) {
 
         List<EventHub> eventHubs = new ArrayList<>();
-        String evenHubUrl = "grpc://192.168.99.100:7053";
+        String evenHubUrl = "grpc://" + HOST + ":7053";
         String ordererName = "peer0.eventhub.org1.example.com";
         Properties properties = new Properties();
         properties.put("grpc.NettyChannelBuilderOption.keepAliveTime", new Object[]{5L, TimeUnit.MINUTES});
         properties.put("grpc.NettyChannelBuilderOption.keepAliveTimeout", new Object[]{8L, TimeUnit.SECONDS});
 
         try {
-            eventHubs.add(client.newEventHub(ordererName, evenHubUrl, properties));
+            eventHubs.add(hfClient.newEventHub(ordererName, evenHubUrl, properties));
         } catch (InvalidArgumentException ex) {
             throw new IllegalArgumentException(ex);
         }
@@ -268,13 +272,13 @@ public class FabricClient {
         return eventHubs;
     }
 
-    public Channel initChannel(HFClient client) {
+    public Channel initChannel(HFClient hfClient) {
 
         String channelName = "mychannel";
 
         Channel channel = null;
         try {
-            channel = client.newChannel(channelName);
+            channel = hfClient.newChannel(channelName);
         } catch (InvalidArgumentException e) {
             throw new RuntimeException(e);
         }
@@ -282,14 +286,14 @@ public class FabricClient {
         return channel;
     }
 
-    private Channel createChannel(HFClient client, Orderer orderer, Peer peer) {
+    private Channel createChannel(HFClient hfClient, Orderer orderer, Peer peer) {
         String channelName = "mychannel";
         String path = "C:/Users/alacambra.SAMA/git/go/work/src/github.com/hyperledger/fabric/examples/e2e_cli/channel-artifacts/channel.tx";
         Channel channel;
 
         try {
             ChannelConfiguration channelConfiguration = new ChannelConfiguration(new File(path));
-            channel = client.newChannel(channelName, orderer, channelConfiguration, client.getChannelConfigurationSignature(channelConfiguration, client.getUserContext()));
+            channel = hfClient.newChannel(channelName, orderer, channelConfiguration, hfClient.getChannelConfigurationSignature(channelConfiguration, hfClient.getUserContext()));
             channel.joinPeer(peer);
         } catch (IOException | ProposalException | InvalidArgumentException | TransactionException e) {
             throw new RuntimeException(e);
@@ -299,9 +303,9 @@ public class FabricClient {
 
     }
 
-    private void runTestQuery(Channel channel, HFClient client) {
+    private void runTestQuery(Channel channel, HFClient hfClient) {
 
-        QueryByChaincodeRequest queryByChaincodeRequest = client.newQueryProposalRequest();
+        QueryByChaincodeRequest queryByChaincodeRequest = hfClient.newQueryProposalRequest();
         queryByChaincodeRequest.setArgs(new String[]{"arg"});
         queryByChaincodeRequest.setFcn("test");
         ChaincodeID chaincodeID = ChaincodeID.newBuilder()
@@ -321,9 +325,27 @@ public class FabricClient {
         }
     }
 
-    public List<ProposalResponse> installChaincode(HFClient client, ChaincodeID chaincodeID, String chaincodeSourceLocation, Collection<Peer> endorsementPeers) {
+    private void query(ChaincodeID chaincodeID, String functionName, String[] args) {
 
-        InstallProposalRequest installProposalRequest = client.newInstallProposalRequest();
+        QueryByChaincodeRequest queryByChaincodeRequest = hfClient.newQueryProposalRequest();
+        queryByChaincodeRequest.setArgs(new String[]{"arg"});
+        queryByChaincodeRequest.setFcn("test");
+        queryByChaincodeRequest.setChaincodeID(chaincodeID);
+        try {
+            List<ProposalResponse> proposalResponses = new ArrayList<>(channel.queryByChaincode(queryByChaincodeRequest));
+            System.out.println("Response " + proposalResponses.get(0)
+                    .getProposalResponse()
+                    .getResponse()
+                    .getPayload()
+                    .toString("UTF-8"));
+        } catch (InvalidArgumentException | ProposalException | UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<ProposalResponse> installChaincode(HFClient hfClient, ChaincodeID chaincodeID, String chaincodeSourceLocation, Collection<Peer> endorsementPeers) {
+
+        InstallProposalRequest installProposalRequest = hfClient.newInstallProposalRequest();
         installProposalRequest.setChaincodeID(chaincodeID);
 
         try {
@@ -335,7 +357,7 @@ public class FabricClient {
         installProposalRequest.setChaincodeVersion(chaincodeID.getVersion());
 
         try {
-            return new ArrayList<>(client.sendInstallProposal(installProposalRequest, endorsementPeers));
+            return new ArrayList<>(hfClient.sendInstallProposal(installProposalRequest, endorsementPeers));
         } catch (ProposalException | InvalidArgumentException e) {
             throw new RuntimeException(e);
         }
@@ -343,16 +365,16 @@ public class FabricClient {
     }
 
 
-    public BlockInfo instantiateChaincode(HFClient client, Channel channel, ChaincodeID chaincodeID) {
+    public BlockInfo instantiateChaincode(HFClient hfClient, Channel channel, ChaincodeID chaincodeID) {
         try {
 
-            InstantiateProposalRequest proposalRequest = client.newInstantiationProposalRequest();
+            InstantiateProposalRequest proposalRequest = hfClient.newInstantiationProposalRequest();
 
             proposalRequest.setChaincodeID(chaincodeID);
             proposalRequest.setFcn("init");
             proposalRequest.setChaincodeLanguage(TransactionRequest.Type.JAVA);
             proposalRequest.setArgs(new ArrayList<>(0));
-            proposalRequest.setUserContext(client.getUserContext());
+            proposalRequest.setUserContext(hfClient.getUserContext());
 
             Map<String, byte[]> tm = new HashMap<>();
             tm.put("HyperLedgerFabric", "InstantiateProposalRequest:JavaSDK".getBytes(UTF_8));
