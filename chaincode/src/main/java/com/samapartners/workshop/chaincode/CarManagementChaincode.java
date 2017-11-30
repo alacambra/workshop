@@ -1,3 +1,5 @@
+package com.samapartners.workshop.chaincode;
+
 import org.hyperledger.fabric.shim.Chaincode;
 import org.hyperledger.fabric.shim.ChaincodeBase;
 import org.hyperledger.fabric.shim.ChaincodeStub;
